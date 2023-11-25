@@ -8,4 +8,6 @@ Estonian Research Council, grant number [**PRG741**](https://www.etis.ee/Portal/
 
 ### Corresponding author
 
-Stenio I A Foerster (University of Tartu) [stenio.foerster\@ut.ee](mailto:stenio.foerster@ut.ee){.email}
+Stenio I A Foerster (University of Tartu)
+
+stenio.foerster@ut.ee
