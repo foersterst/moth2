@@ -1,0 +1,372 @@
+---
+title: "Supporting information"
+subtitle: "Unraveling evolutionary patterns: the interplay of body size and life-history traits in geometrid moths"
+author: "Stenio I. A. Foerster, John T. Clarke, Erki Õunap, Tiit Teeder & Toomas Tammaru"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 4
+header-includes:
+  - \usepackage{pdflscape}
+---
+
+```{r input data, include=FALSE}
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+# Table from Erki
+r <- read_csv("supp_erki.csv")
+r$Subfamily <- gsub(pattern = "Ennomnae", replacement = "Ennominae", x = r$Subfamily)
+r$Family <- gsub(pattern = "Geometrdae", replacement = "Geometridae", x = r$Family)
+r <- arrange(r, -desc(Family), -desc(Subfamily), -desc(Genus), -desc(Species))
+#r <- r[1:50, ]
+
+# Raw data
+d <- read_csv("~/Nextcloud/Geometridae/paper2/oikos/stats/data/geom_traits_dbm.csv")
+# overwintering stage: larva/other
+d$ove_bin <- ifelse(d$overwinter == "larva", "Larval", "Non-Larval")
+# host plant: woody/other
+d$hos_bin <- ifelse(d$foodplant %in% c("W", "WH", "WWH", "HW"), "Tree feeder", "Herb feeder")
+# dietary specialization method I: generalist/specialist, specialist = monophagous
+d$spe_bin_1 <- ifelse(d$specialism == "mono", "specialist", "generalist")
+# dietary specialization method II: generalist/specialist, specialist = monophagous & oligophagous
+d$spe_bin_2 <- ifelse(d$specialism == "poly", "Generalist", "Specialist")
+# flight period: diurnal/nocturnal (diurnal = "able" to flight during the day)
+d$fly_bin <- ifelse(d$day_activity == 0, "Nocturnal", "Diurnal")
+# voltinism
+d$voltinism <- ifelse(d$voltinism == "univ", "Univoltine", "Multivoltine")
+
+
+# Model Finder output
+mf <- read_csv("modelFinder.csv")
+
+```
+
+## Phylogenetic analysis
+
+The phylogenetic tree used in this study was constructed using a dataset from GenBank and original sequences generated following reaction protocols described in Õunap et al. (2016) and Wahlberg et al. (2016). The matrix included 522 taxa (485 geometrid species and 37 diverse outgroup species) with 7880 base pairs from eleven markers (see Table 1 in this document). These markers, widely used in geometrid moth phylogenetics, are cytochrome oxidase subunit 1 (COI), elongation factor 1 alpha (EF-1a), wingless (wgl), glyceraldehyde-3-phosphate dehydrogenase (GAPDH), ribosomal protein S5 (RpS5), isocitrate dehydrogenase (IDH), malate dehydrogenase (MDH) and carbamoylphosphate synthase domain protein (CAD), arginine kinase (ArgK), sarco/endoplasmic reticulum calcium ATPase (Ca-ATPase), and sorting nexin-9-like protein (Nex9). Sequences were aligned using CLUSTALW (Thompson et al. 1994) in BIOEDIT 7.2.5 (Hall 1999). Due to the large number of taxa (over 500) in this study, analyzing them together to obtain the required ultrametric tree was impractical. Hence, a multi-step analysis was devised to address challenges associated with the size of the complete data matrix. The following provides a brief overview of these steps, with detailed descriptions to follow.
+
+Initially, a maximum likelihood (ML) tree with 522 taxa was built using IQ-TREE v2.1.2 (Nguyen et al. 2015) on the CIPRES Science Gateway (Miller et al. 2010), serving as a phylogenetic constraint for subsequent analyses focused on node age calculation. Next, the ML tree was transformed into an ultrametric tree using the R package `ape` (Paradis & Schliep 2019). The 522-taxon ultrametric tree was then pruned into four smaller trees, corresponding to subfamilies Ennominae, Geometrinae, Larentiinae, and Sterrhinae, using the R package `ape`. Node ages for each smaller tree were computed using BEAST v1.10.4 (Suchard et al. 2018), with the ultrametric trees as constrained topologies. Finally, the four ultrametric trees were consolidated into a single 522-species ultrametric tree using the `consensus.edges` function from the R package `phytools` (Revell 2012). This tree was subsequently pruned to retain only the Northern European geometrids represented in our ecological data set (see Table 1 in this document).
+
+### Step 1: Estimating the maximum likelihood tree
+
+To identify optimal substitution models and a partitioning scheme, the 11 markers were initially grouped into three subsets based on codon positions. Subsequently, MODELFINDER in IQ-TREE v2.1.2, executed on the CIPRES Science Gateway, partitioned these subsets based on their actual rate of evolution. The best-fitting scheme, chosen to reduce over-parametrization and enhance model fit (using `-m TESTNEWMERGEONLY` with FreeRate model inclusion), was determined by merging partitions. During the model search, partitions were allowed to evolve at different speeds (`-spp`), and only the top 30% of merging schemes were considered to expedite the analysis (`-rcluster 30`). The MODELFINDER results led to the division of the data matrix into 19 partitions, each comprising 1 to 3 subsets:
+
+```{r Model Finder, echo=FALSE}
+
+mf %>% 
+  kbl(booktabs = T, linesep = "") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+
+```
+
+For optimal tree determination, the partitioning scheme from the model selection run was utilized. To enhance the search, partitions were allowed to evolve at different speeds (`-spp`), an extensive NNI search was activated (`-allnni`), and additional NNI based directly on bootstrap alignments (`-bnni`) was performed to mitigate the risk of overestimating branch supports. Node support was assessed with 5,000 ultrafast bootstrap (UFBoot2, Hoang et al. 2018) replications and 5,000 SH-Like approximate likelihood ratio test (SH-Like, Guindon et al. 2010) iterations. The final backbone tree, incorporating Drepanoidea as the outgroup following Kawahara et al. (2019), was visualized and edited in FigTree v1.4.4 software (Rambaut 2012).
+
+### Step 2: Building the ultrametric starting trees
+
+The ML tree from the preceding section was made ultrametric using the `makeChronosCalib` and `chronos` functions in the R package `ape`. Subsequently, four smaller ultrametric trees, focusing on Ennominae, Geometrinae, Larentiinae, and Sterrhinae subfamilies, were generated by pruning unnecessary taxa from the initial 522-taxon ultrametric tree using the `drop.tip` function in `ape`. These smaller trees shared 40 taxa from the subfamilies Archiearinae, Desmobathrinae, Ennominae, Epidesmiinae, Geometrinae, Larentiinae, Oenochrominae and Sterrhinae, and 37 outgroup species. Simultaneously, four smaller nucleotide data matrices were created, matching the taxonomic composition of the respective ultrametric trees.
+
+### Step 3: Node age estimation
+
+#### Ennominae
+
+\
+The Ennominae subfamily analysis included 217 species. For node age calculation, the data were initially partitioned according to gene fragments, and MODELFINDER (Kalyaanamoorthy et al. 2017) in IQ-TREE v2.1.2 was utilized to merge the gene fragments based on their rate of evolution. The best partitioning scheme, chosen to reduce over-parametrization and improve model fit (using `-m TESTNEWMERGEONLY` with FreeRate model inclusion), was determined by the Bayesian Information Criterion (`-merit BIC`). As suggested by MODELFINDER, nucleotide data were divided into seven partitions, each comprising 1 to 2 gene fragments. The GTR model was applied to two, and the GTR+I+G model to seven partitions. A relaxed molecular clock was employed for each partition.
+
+To calibrate the ultrametric tree, seven calibration points were defined following Kawahara et al. (2019) and Wahlberg et al. (2010): root of the tree (uniformly distributed between 83.3 and 104.8 million years), Drepanidae (uniformly distributed between 60 and 84.7 million years), Noctuoidea (uniformly distributed between 67 and 88.6 million years), Bombycoidea (uniformly distributed between 56.9 and 77 million years), Geometroidea (uniformly distributed between 68.1 and 90 million years), split between Geometrinae and Ennominae (uniformly distributed between 57.7 and 86.3 million years), and split between *Hypomecis punctinalis* and *H. atomaria* (uniformly distributed between 7 and 12.8 million years). The tree prior was set to the Birth-Death process (Gernhard, 2008), and the `ucld.mean` parameter was given a uniform prior between 0 and 1 for all partitions. Three independent analyses, each running for 30 million generations with sampling every 1000th generation, were performed. Results were assessed in TRACER 1.5, and 1 million generations were discarded as *burn-in*. Subsequently, results from all analyses were combined using LOGCOMBINER v1.10.4, and the final tree was constructed using TREEANNOTATOR v1.10.4 in the High-Performance Computing Center of the University of Tartu, Estonia. Visualization was done in FIGTREE v1.4.0.
+
+#### Geometrinae
+
+\
+The analysis focused on the Geometrinae subfamily included 94 species. For node age calculation, gene fragments were initially partitioned, and MODELFINDER in IQ-TREE v2.1.2 was employed to merge these fragments based on their rate of evolution. The best-fitting partitioning scheme, aimed at reducing over-parametrization and enhancing model fit (using `-m TESTNEWMERGEONLY` with FreeRate model inclusion), was chosen based on the Bayesian Information Criterion (`-merit BIC`). As recommended by MODELFINDER, nucleotide data were divided into five partitions, each comprising 1 to 4 gene fragments. The GTR model was applied to four, and the GTR+I+G model to one partition. A relaxed molecular clock, allowing branch lengths to vary according to an uncorrelated lognormal distribution (Drummond et al., 2006), was used for each partition.
+
+To calibrate the ultrametric tree, six calibration points were defined following Kawahara et al. (2019): root of the tree (uniformly distributed between 83.3 and 104.8 million years), Drepanidae (uniformly distributed between 61.3 and 84.7 million years), Noctuoidea (uniformly distributed between 67 and 88.6 million years), Bombycoidea (uniformly distributed between 56.9 and 75.4 million years), Geometroidea (uniformly distributed between 68.1 and 88.6 million years), and the split between Geometrinae and Ennominae (uniformly distributed between 43.4 and 63.5 million years). The tree prior was set to the Birth-Death process (Gernhard, 2008), and the `ucld.mean` parameter was given a uniform prior between 0 and 1 for all partitions. All other priors were set to defaults. Two independent analyses ran for 20 million generations with Bayesian MCMC, sampling every 1000th generation. Results were examined in TRACER 1.5, with 1 million generations discarded from both runs as *burn-in*. Subsequently, results from both analyses were combined using LOGCOMBINER v1.10.4. The final tree was constructed using TREEANNOTATOR v1.10.4 at the High-Performance Computing Center of the University of Tartu and visualized in FIGTREE v1.4.0.
+
+#### Larentiinae
+
+\
+The Larentiinae subfamily analysis involved 302 species. For node age calculation, gene fragments were initially partitioned, and IQ-TREE v2.1.2 with MODELFINDER was employed to merge fragments based on their rate of evolution. The best-fitting partitioning scheme, selected for reduced over-parametrization and improved model fit (`-m TESTNEWMERGEONLY` with FreeRate model inclusion), was determined using the Bayesian Information Criterion (`-merit BIC`). As per MODELFINDER's suggestion, nucleotide data were divided into six partitions, each comprising 1 to 2 gene fragments. The GTR model was applied to five, and the GTR+I+G model to one partition. A relaxed molecular clock, varying branch lengths according to an uncorrelated lognormal distribution (Drummond et al., 2006), was used for each partition.
+
+For calibrating the ultrametric tree, six calibration points were established following Kawahara et al. (2019): root of the tree (uniformly distributed between 83.3 and 104.8 million years), Drepanidae (uniformly distributed between 60 and 84.7 million years), Noctuoidea (uniformly distributed between 67 and 88.6 million years), Bombycoidea (uniformly distributed between 56.9 and 77 million years), Geometroidea (uniformly distributed between 68.1 and 90 million years), and the split between Geometrinae and Ennominae (uniformly distributed between 57.7 and 86.3 million years). The tree prior was set to the Birth-Death process (Gernhard, 2008), with the `ucld.mean` parameter given a uniform prior between 0 and 1 for all partitions. All other priors were set to defaults. Four independent analyses, each running for 40 million generations with Bayesian MCMC and sampling every 1000th generation, were performed. Results were examined in TRACER 1.5, and 1 million generations were discarded from each run as *burn-in*. Subsequently, results from all analyses were combined using LOGCOMBINER v1.10.4. The final tree was constructed using TREEANNOTATOR v1.10.4 at the High-Performance Computing Center of the University of Tartu and visualized in FIGTREE v1.4.0.
+
+#### Sterrhinae
+
+\
+The Sterrhinae subfamily analysis included 128 species. For node age calculation, gene fragments were initially partitioned, and IQ-TREE v2.1.2 with MODELFINDER was used to merge fragments based on their rate of evolution. The best-fitting partitioning scheme, selected for reduced over-parametrization and improved model fit (`-m TESTNEWMERGEONLY` with FreeRate model inclusion), was determined using the Bayesian Information Criterion (`-merit BIC`). As suggested by MODELFINDER, nucleotide data were divided into five partitions, each comprising 1 to 4 gene fragments. The GTR model was applied to five, and the GTR+I+G model to one partition. A relaxed molecular clock, allowing branch lengths to vary according to an uncorrelated lognormal distribution (Drummond et al., 2006), was used for each partition.
+
+For calibrating the ultrametric tree, six calibration points were set in accordance with Kawahara et al. (2019): root of the tree (uniformly distributed between 83.3 and 104.8 million years), Drepanidae (uniformly distributed between 60 and 84.7 million years), Noctuoidea (uniformly distributed between 67 and 88.6 million years), Bombycoidea (uniformly distributed between 56.9 and 77 million years), Geometroidea (uniformly distributed between 68.1 and 90 million years), and the split between Geometrinae and Ennominae (uniformly distributed between 57.7 and 86.3 million years). The tree prior was set to the Birth-Death process (Gernhard, 2008), with the `ucld.mean` parameter given a uniform prior between 0 and 1 for all partitions. All other priors were set to defaults. Two independent analyses, each running for 40 million generations with Bayesian MCMC and sampling every 1000th generation, were performed. Results were examined in TRACER 1.5, and 3 million generations were discarded from both runs as 'burn-in.' Subsequently, results from both analyses were combined using LOGCOMBINER v1.10.4. The final tree was constructed using TREEANNOTATOR v1.10.4 at the High-Performance Computing Center of the University of Tartu and visualized in FIGTREE v1.4.0.
+
+### Step 4: Obtaining the final ultrametric tree
+
+The four ultrametric trees, derived from the processes outlined above were merged into a unified 522-species ultrametric tree. Initially, the `consensus.edges` function from the R package `phytools` (Revell, 2012) was employed to generate a consensus of the subfamily-level sections in each of the four partitions, yielding lower-level consensus branch lengths between subfamilies (which may differ slightly across partitions). Subsequently, the well-sampled species-level trees for each subfamily were integrated into their respective positions on the tree. This two-stage process was necessary because the `consensus.edges` function is designed to handle fully-overlapping trees.\
+
+**References**
+
+Drummond, A.J., Ho, S.Y.W., Phillips, M.J., & Rambaut, A. (2006). Relaxed phylogenetics and dating with confidence. PLoS Biology, 4, 699--710.
+
+Gernhard, T. (2008). The conditioned reconstructed process. Journal of Theoretical Biololgy, 253, 769--778.
+
+Guindon, S., Dufayard, J.-F., Lefort, V., Anisimova, M., Hordijk, W. & Gascuel O. (2010). New algorithms and methods to estimate maximum-likelihood phylogenies: assessing the performance of PhyML 3.0. Systematic Biology, 59, 307--321.
+
+Hall, T.A. (1999). BioEdit: a user-friendly biological sequence alignment editor and analysis program for Windows 95/98/NT. Nucleic Acids Symposium Series, 41, 95-98.
+
+Hoang, D.T., Chernomor, O., von Haeseler, A., Minh, B.Q., & Vinh, L.S. (2018). UFBoot2: improving the ultrafast bootstrap approximation. Molecular Biology and Evolution, 35, 518--522.
+
+Kalyaanamoorthy, S., Minh, B.Q., Wong, T.K.F., von Haeseler, A. & Jermiin, L.S. (2017). ModelFinder: fast model selection for accurate phylogenetic estimates. Nature Methods, 14, 587--589.
+
+Kawahara, A.Y., Plotkin, D., Espeland, M., Meusemann, K., Toissaint, E.F.A., Donath, A., Gimnich, F., Frandsen, P.B., Zwick, A., dos Reis, M., Barber, J.R., Peters, R.S., Liu, S., Zhou, X., Mayer, C., Podsiadlowski, L., Storer, C., Yack, J.E., Misof, B., & Breinholt, J.W. (2019). Phylogenomics reveals the evolutionary timing and pattern of butterflies and moths. Proceedings of the National Academy of Sciences, 116, 22657--22663.
+
+Miller, M.A., Pfeiffer, W., & Schwartz, T. (2010). Creating the CIPRES Science Gateway for inference of large phylogenetic trees. Proceedings of the Gateway Computing Environments Workshop (GCE). New Orleans, Louisiana, 14 November 2010. pp. 1-8.
+
+Nguyen, L.-T., Schmidt, H.A., von Haeseler, A., & Minh, B.Q. (2015). IQ-TREE: a fast and effective stochastic algorithm for estimating maximum likelihood phylogenies. Molecular Biology and Evolution, 32, 268--274.
+
+Õunap, E., Viidalepp, J., & Truuverk, A. (2016). Phylogeny of the subfamily Larentiinae (Lepidoptera: Geometridae): integrating molecular data and traditional classifications. Systematic Entomology, 41, 824--843.
+
+Paradis, E., & Schliep, K. (2019). ape 5.0: an environment for modern phylogenetics and evolutionary analyses in R. Bioinformatics, 35, 526-528.
+
+Rambaut, A. (2012). Figtree 1.4.4. Available at <http://tree.bio.ed.ac.uk/software/ﬁgtree/> (accessed 6 July 2021).
+
+Revell, L. J. (2012). phytools: an R package for phylogenetic comparative biology (and other things). Methods in Ecology and Evolution, 3, 217--223.
+
+Suchard, M.A., Lemey, P., Baele, G., Ayres, D.L., Drummond, A.J. & Rambaut, A. (2018). Bayesian phylogenetic and phylodynamic data integration using BEAST 1.10. Virus Evolution, 4, vey016.
+
+Thompson, J.D., Higgins, D.G., & Gibson, T.J. (1994). ClustalW: improving the sensitivity of progressive multiple sequence alignment through sequence weighting, position specific gap penalties and weight matrix choice. Nucleic Acids Research, 22, 4673--4680.
+
+Wahlberg, N., Snäll, N., Viidalepp, J., Ruohomäki, K., & Tammaru, T. (2010). The evolution of female flightlessness among Ennominae of the Holarctic forest zone (Lepidoptera, Geometridae). Molecular Phylogenetics and Evolution, 55, 929--938.
+
+Wahlberg, N., Peña, C., Ahola, M., Wheat, C.W., & Rota, J. (2016). PCR primers for 30 novel gene regions in the nuclear genomes of Lepidoptera. Zookeys, 596, 129--141.
+
+\newpage
+
+```{r Accession codes table part 1, echo=FALSE}
+
+r[1:60, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex",
+      caption = "List of species and respective accession codes. Sequences generated in this study are designated as \"original.\"") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>% 
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 2, echo=FALSE}
+
+r[61:111, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 3, echo=FALSE}
+
+r[112:162, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 4, echo=FALSE}
+
+r[163:213, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 5, echo=FALSE}
+
+r[214:264, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 6, echo=FALSE}
+
+r[265:315, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 7, echo=FALSE}
+
+r[316:366, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 8, echo=FALSE}
+
+r[367:418, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 9, echo=FALSE}
+
+r[419:469, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  add_footnote("Continues on the next page", notation = "none") %>%
+  kableExtra::landscape()
+```
+
+```{r Accession codes table part 10, echo=FALSE}
+
+r[470:482, ] %>% 
+  kbl(booktabs = T, linesep = "", format = "latex") %>% 
+  kable_styling(latex_options = c("striped", "scale_down")) %>% 
+  column_spec(column = 3:4, italic = T) %>% 
+  kableExtra::landscape()
+```
+
+\newpage
+
+### Trait frequencies
+
+The contingency tables below show the distribution of life-history traits in 372 geometrid moth species from Northern Europe. Associations among trait frequencies were investigated through Chi-squared tests.\
+
+```{r, echo=FALSE, results='asis'}
+
+
+# voltinism x overwintering
+table(d$voltinism, d$ove_bin) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Voltinism", "Larval", "Non-larval")) %>% 
+  add_header_above(c(" " = 1, "Overwintering stage" = 2)) %>% 
+  add_footnote("Chi-squared = 5.36, p-value = 0.02", notation = "none") -> t1
+
+# voltinism x host plant
+table(d$voltinism, d$hos_bin) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Voltinism", "Herb feeder", "Tree feeder")) %>% 
+  add_header_above(c(" " = 1, "Host plant" = 2)) %>% 
+  add_footnote("Chi-squared = 5.38, p-value = 0.02", notation = "none") -> t2
+
+# voltinism x diel activity (flight period)
+table(d$voltinism, d$fly_bin) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Voltinism", "Diurnal", "Nocturnal")) %>% 
+  add_header_above(c(" " = 1, "Diel activity" = 2)) %>% 
+  add_footnote("Chi-squared = 0.10, p-value = 0.75", notation = "none") -> t3
+
+# voltinism x dietary specialization
+table(d$voltinism, d$spe_bin_2) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Voltinism", "Generalist", "Specialist")) %>% 
+  add_header_above(c(" " = 1, "Dietary specialization" = 2)) %>% 
+  add_footnote("Chi-squared = 3.22, p-value = 0.07", notation = "none") -> t4
+
+# overwintering x host plant
+table(d$ove_bin, d$hos_bin) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Overwintering stage", "Herb feeder", "Tree feeder")) %>% 
+  add_header_above(c(" " = 1, "Host plant" = 2)) %>% 
+  add_footnote("Chi-squared = 17.31, p-value < 0.01", notation = "none") -> t5
+
+# overwintering x diel activity
+table(d$ove_bin, d$fly_bin) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Overwintering stage", "Diurnal", "Nocturnal")) %>% 
+  add_header_above(c(" " = 1, "Diel activity" = 2)) %>% 
+  add_footnote("Chi-squared = 0.33, p-value = 0.57", notation = "none") -> t6
+
+# overwintering x dietary specialization
+table(d$ove_bin, d$spe_bin_2) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Overwintering stage", "Generalist", "Specialist")) %>% 
+  add_header_above(c(" " = 1, "Dietary specialization" = 2)) %>% 
+  add_footnote("Chi-squared = 17.73, p-value < 0.01", notation = "none") -> t7
+
+# host plant x diel activity
+table(d$hos_bin, d$fly_bin) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Host plant", "Diurnal", "Nocturnal")) %>% 
+  add_header_above(c(" " = 1, "Diel activity" = 2)) %>% 
+  add_footnote("Chi-squared = 9.35, p-value < 0.01", notation = "none") -> t8
+
+# host plant x dietary specialization
+table(d$hos_bin, d$spe_bin_2) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Host plant", "Generalist", "Specialist")) %>% 
+  add_header_above(c(" " = 1, "Dietary specialization" = 2)) %>% 
+  add_footnote("Chi-squared = 9.16, p-value < 0.01", notation = "none") -> t9
+
+# diel activity x dietary specialization
+table(d$fly_bin, d$spe_bin_2) %>% 
+  kbl(booktabs = T, format = "latex", col.names = c("Diel activity", "Generalist", "Specialist")) %>% 
+  add_header_above(c(" " = 1, "Dietary specialization" = 2)) %>% 
+  add_footnote("Chi-squared = 9.16, p-value < 0.01", notation = "none") -> t10
+
+
+# Display the contingency tables
+
+cat(c("\\begin{table}[!htb]
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t5,
+    "\\end{minipage}%
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t6,
+    "\\end{minipage} 
+\\end{table}"
+))
+cat(c("\\begin{table}[!htb]
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t7,
+    "\\end{minipage}%
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t1,
+    "\\end{minipage} 
+\\end{table}"
+))  
+cat(c("\\begin{table}[!htb]
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t2,
+    "\\end{minipage}%
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t3,
+    "\\end{minipage} 
+\\end{table}"
+))  
+cat(c("\\begin{table}[!htb]
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t4,
+    "\\end{minipage}%
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t8,
+    "\\end{minipage} 
+\\end{table}"
+))  
+cat(c("\\begin{table}[!htb]
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t9,
+    "\\end{minipage}%
+    \\begin{minipage}{.5\\linewidth}
+      \\centering",
+        t10,
+    "\\end{minipage} 
+\\end{table}"
+))  
+
+```
